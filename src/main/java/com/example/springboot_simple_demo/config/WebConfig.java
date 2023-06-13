@@ -16,8 +16,6 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins("*")
                 // 允许全部原始头信息
                 .allowedHeaders("*")
-                // 允许跨越发送cookie
-                .allowCredentials(true)
                 // 允许所有请求方法跨域调用
                 .allowedMethods("*");
     }

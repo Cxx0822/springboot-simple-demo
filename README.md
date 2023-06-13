@@ -30,8 +30,6 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedOrigins("*")
                 // 允许全部原始头信息
                 .addAllowedHeader("*")
-                // 允许跨越发送cookie
-                .allowCredentials(true)
                 //允许所有请求方法跨域调用
                 .allowedMethods("*");
     }
@@ -129,12 +127,193 @@ public class LettuceRedisConfig {
 ```
 
 ### Redis工具类
+```java
+@Component
+public class RedisUtil {
+
+    @Resource
+    private RedisTemplate<String, String> redisTemplate;
+
+    /**
+     * 设置key-value
+     *
+     * @param key   键
+     * @param value 值
+     */
+    public void set(String key, String value) {
+        redisTemplate.opsForValue().set(key, value);
+    }
+
+    /**
+     * 设置带生存时间的key-value
+     *
+     * @param key     键
+     * @param value   值
+     * @param timeout 生存时间
+     * @param unit    时间单位
+     */
+    public void set(String key, String value, long timeout, TimeUnit unit) {
+        redisTemplate.opsForValue().set(key, value, timeout, unit);
+    }
+
+    /**
+     * 设置指定数据的生存时间。
+     *
+     * @param key  键
+     * @param time 生存时间（秒）
+     */
+    public void expire(String key, long time) {
+        redisTemplate.expire(key, time, TimeUnit.SECONDS);
+    }
+
+    /**
+     * 根据key，获取值
+     *
+     * @param key 键
+     * @return 获取到的值
+     */
+    public String get(String key) {
+        return String.valueOf(redisTemplate.opsForValue().get(key));
+    }
+
+
+    /**
+     * 判断key是否存在
+     * @param key 键
+     * @return 是否存在
+     */
+    public boolean exists(String key) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+
+
+    /**
+     * 删除指定信息。
+     *
+     * @param key 键
+     * @return 是否删除成功
+     */
+    public boolean delete(String key) {
+        return Boolean.TRUE.equals(redisTemplate.delete(key));
+    }
+}
+```
+
 &emsp;&emsp;参考资料：[自定义RedisTemplate和工具类](https://juejin.cn/post/7031418915515269127)    
 &emsp;&emsp;参考资料：[springboot项目中redis客户端](https://blog.csdn.net/Ye_GuoLin/article/details/115208061)
 
 ## 简单使用
+```java
+@RestController
+@RequestMapping("/redis")
+public class RedisController {
+    @Resource
+    private RedisUtil redisUtil;
+
+    /**
+     * 生成Redis数据
+     * @param redisId 序号
+     * @return Result
+     */
+    @GetMapping("/generateRedis")
+    public R generateCaptcha(@RequestParam String redisId) {
+        String redisValue = "";
+        // 判断Redis的键是否存在
+        if (redisUtil.exists(redisId)) {
+            // 存在则返回该值
+            redisValue = redisUtil.get(redisId);
+        } else {
+            // 不存在则重新生成 (根据业务需求自定义Redis值)
+            redisValue = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
+            redisUtil.set(redisId, redisValue, 60, TimeUnit.SECONDS);
+        }
+
+        return R.ok().data("redisValue", redisValue);
+    }
+
+    /**
+     * 获取Redis数据
+     * @param redisId 序号
+     * @return Result
+     */
+    @GetMapping("/getRedis")
+    public R getRedis(@RequestParam String redisId) {
+        // 判断Redis的键是否存在
+        if (redisUtil.exists(redisId)) {
+            // 存在则返回该值
+            String redisValue = redisUtil.get(redisId);
+            return R.ok().data("redisValue", redisValue);
+        } else {
+            return R.ok().data("redisValue", "验证码已失效");
+        }
+    }
+
+    /**
+     * 校验Redis数据
+     * @param redisId 序号
+     * @param redisValue Redis值
+     * @return Result
+     */
+    @PostMapping("/checkRedis")
+    public R checkRedis(@RequestParam String redisId,
+                          @RequestParam String redisValue) {
+
+        if (redisUtil.get(redisId).equals(redisValue)) {
+            return R.ok().message("success");
+        } else {
+            return R.error().message("failed");
+        }
+    }
+}
+```
 
 # Feign调用远程接口
 ## Feign原理
-
 参考资料:[SpringBoot项目中使用feign调用远程http接口](https://blog.csdn.net/weixin_40861707/article/details/124209355)
+
+## 配置Maven
+```xml
+<!-- Feign 注意和Springboot的版本！ -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-openfeign</artifactId>
+    <version>3.1.3</version>
+</dependency>
+```
+
+## 启动类增加注释
+```java
+@SpringBootApplication
+@EnableFeignClients
+public class SpringbootSimpleDemoApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SpringbootSimpleDemoApplication.class, args);
+    }
+
+}
+```
+
+## 简单使用
+```java
+@FeignClient(name = "feignClient", url = "http://192.168.1.1:8080")
+public interface FeignClientService {
+    @PostMapping("/feignClient/testFeignClient")
+    R testFeignClient(@RequestParam String name);
+}
+```
+
+&emsp;&emsp;url为远程服务器的地址，`@PostMapping`为调用远程Post接口，括号内参数为具体的url路径。
+
+# 自启动配置
+## 继承CommandLineRunner
+```java
+@Component
+@Slf4j
+public class CommandLineRunnerImpl implements CommandLineRunner {
+    @Override
+    public void run(String... args) throws Exception {
+        log.info("Hello World");
+    }
+}
+```
