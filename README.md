@@ -3,7 +3,7 @@ Spring Boot项目Demo
 &emsp;&emsp;本项目为Spring Boot中常用的一些技术Demo。
 
 # 技术栈
-&emsp;&emsp;Spring Boot 2.7.13
+&emsp;&emsp;Spring Boot 2.5.9
 
 # 配置跨越
 ## 跨域
@@ -277,7 +277,7 @@ public class RedisController {
 <dependency>
     <groupId>org.springframework.cloud</groupId>
     <artifactId>spring-cloud-starter-openfeign</artifactId>
-    <version>3.1.3</version>
+    <version>3.0.6</version>
 </dependency>
 ```
 
