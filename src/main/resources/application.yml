@@ -1,0 +1,7 @@
+ftpServiceInfo:
+  hostIp: 127.0.0.1
+  port: 21
+  username: cxx
+  password: ' '
+  localBasePath: /home/cxx/Documents
+  ftpBasePath: /home/cxx/Downloads

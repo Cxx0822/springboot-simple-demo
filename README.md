@@ -127,77 +127,7 @@ public class LettuceRedisConfig {
 ```
 
 ### Redis工具类
-```java
-@Component
-public class RedisUtil {
-
-    @Resource
-    private RedisTemplate<String, String> redisTemplate;
-
-    /**
-     * 设置key-value
-     *
-     * @param key   键
-     * @param value 值
-     */
-    public void set(String key, String value) {
-        redisTemplate.opsForValue().set(key, value);
-    }
-
-    /**
-     * 设置带生存时间的key-value
-     *
-     * @param key     键
-     * @param value   值
-     * @param timeout 生存时间
-     * @param unit    时间单位
-     */
-    public void set(String key, String value, long timeout, TimeUnit unit) {
-        redisTemplate.opsForValue().set(key, value, timeout, unit);
-    }
-
-    /**
-     * 设置指定数据的生存时间。
-     *
-     * @param key  键
-     * @param time 生存时间（秒）
-     */
-    public void expire(String key, long time) {
-        redisTemplate.expire(key, time, TimeUnit.SECONDS);
-    }
-
-    /**
-     * 根据key，获取值
-     *
-     * @param key 键
-     * @return 获取到的值
-     */
-    public String get(String key) {
-        return String.valueOf(redisTemplate.opsForValue().get(key));
-    }
-
-
-    /**
-     * 判断key是否存在
-     * @param key 键
-     * @return 是否存在
-     */
-    public boolean exists(String key) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
-    }
-
-
-    /**
-     * 删除指定信息。
-     *
-     * @param key 键
-     * @return 是否删除成功
-     */
-    public boolean delete(String key) {
-        return Boolean.TRUE.equals(redisTemplate.delete(key));
-    }
-}
-```
+&emsp;&emsp;[RedisUtil.java](./src/main/java/com/example/springboot_simple_demo/utils/RedisUtil.java)
 
 &emsp;&emsp;参考资料：[自定义RedisTemplate和工具类](https://juejin.cn/post/7031418915515269127)    
 &emsp;&emsp;参考资料：[springboot项目中redis客户端](https://blog.csdn.net/Ye_GuoLin/article/details/115208061)
@@ -314,6 +244,157 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         log.info("Hello World");
+    }
+}
+```
+
+# FTP传输文件
+## FTP协议
+&emsp;&emsp;FTP(File Transfer Protocol)：是应用层的一个文件传输协议。主要作用是在服务器和客户端之间实现文件的传输和共享。FTP协议运行在TCP连接上，保证了文件传输的可靠性。      
+&emsp;&emsp;参考资料:[【FTP协议】概述篇](https://zhuanlan.zhihu.com/p/337513218)
+
+## 服务器安装ftp
+1. 下载vsftpd：sudo apt-get install vsftpd       
+2. 打开配置文件/ect/vsftpd.conf，将write_enable=YES注释取消   
+
+## FTP工具类
+&emsp;&emsp;[FtpUtil.java](./src//main//java//com//example//springboot_simple_demo/utils/FtpUtil.java)
+
+## 简单使用
+&emsp;&emsp;`FtpTransferService.java`
+```java
+public interface FtpTransferService {
+    /**
+     * 上传单个文件
+     * @param ftpServiceInfo FTP服务器信息
+     * @param localBasePath 本地文件根路径
+     * @param localFilePath 本地文件路径
+     * @param ftpBasePath FTP文件根路径
+     * @param ftpFilePath FTP文件路径
+     */
+    void uploadFile(FtpServiceInfo ftpServiceInfo,
+                      String localBasePath, String localFilePath,
+                      String ftpBasePath, String ftpFilePath);
+
+    /**
+     * 下载个文件
+     * @param ftpServiceInfo FTP服务器信息
+     * @param localBasePath 本地文件根路径
+     * @param localFilePath 本地文件路径
+     * @param ftpBasePath FTP文件根路径
+     * @param ftpFilePath FTP文件路径
+     */
+    void downloadFile(FtpServiceInfo ftpServiceInfo,
+                    String localBasePath, String localFilePath,
+                    String ftpBasePath, String ftpFilePath);
+}
+```
+
+&emsp;&emsp;`FtpTransferServiceImpl.java`
+```java
+public class FtpTransferServiceImpl implements FtpTransferService {
+    @Override
+    public void uploadFile(FtpServiceInfo ftpServiceInfo, String localBasePath, String localFilePath, String ftpBasePath, String ftpFilePath) {
+        // 检查需要上传的文件是否存在
+        File file = new File(localBasePath + File.separator + localFilePath);
+        if (!file.exists()) {
+            log.error("upLoadFile " + localBasePath + File.separator + localFilePath + " not exit");
+            return;
+        }
+
+        String fileName = file.getName();
+        log.info("start uploadFile: " + fileName);
+
+        try {
+            // 初始化Ftp服务器
+            FtpUtil ftpUtil = new FtpUtil(ftpServiceInfo.hostIp, ftpServiceInfo.port, ftpServiceInfo.username, ftpServiceInfo.password);
+
+            FileInputStream fileInputStream = new FileInputStream(file);
+            if (ftpUtil.uploadFile(ftpBasePath, ftpFilePath, fileName, fileInputStream)) {
+                log.info("uploadFile: " + fileName + " success");
+            } else {
+                log.error("uploadFile: " + fileName + " failed");
+            }
+
+            log.info("finish uploadFile");
+        } catch (Exception exception) {
+            log.error("uploadFile: " + fileName + " failed " + exception.getMessage());
+        }
+    }
+
+    @Override
+    public void downloadFile(FtpServiceInfo ftpServiceInfo, String localBasePath, String localFilePath, String ftpBasePath, String ftpFilePath) {
+        log.info("start downloadFile: " + ftpFilePath);
+
+        try {
+            // 初始化Ftp服务器
+            FtpUtil ftpUtil = new FtpUtil(ftpServiceInfo.hostIp, ftpServiceInfo.port, ftpServiceInfo.username, ftpServiceInfo.password);
+
+            InputStream inputStream = null;
+            inputStream = ftpUtil.downloadFile(ftpBasePath, ftpFilePath);
+
+            File targetFile = new File(localBasePath + File.separator + localFilePath);
+            FileUtils.copyInputStreamToFile(inputStream, targetFile);
+            log.info("finish downloadFile");
+        } catch (Exception exception) {
+            log.error("downloadFile: " + ftpFilePath + " failed " + exception.getMessage());
+        }
+    }
+}
+```
+
+&emsp;&emsp;`SpringBootSimpleDemoApplicationTests.java`
+```java
+@Test
+void TestFtp() {
+    FtpServiceInfo ftpServiceInfo = new FtpServiceInfo("127.0.0.1", 21, "cxx", " ");
+    ftpTransferService.uploadFile(ftpServiceInfo,
+            "/home/cxx/Documents", "test.txt",
+            "/home/cxx/Downloads", "");
+
+    // ftpTransferService.downloadFile(ftpServiceInfo,
+    //         "/home/cxx/Documents", "test.txt",
+    //         "/home/cxx/Downloads", "test.txt");
+}
+```
+
+# 调用脚本
+## 简单使用
+```java
+@Slf4j
+public class ScriptUtil {
+    public static String execCommand(String command){
+        StringBuilder result = new StringBuilder();
+
+        try {
+            // String command = "cat /proc/version";
+            // String command = "sh /home/cxx/Documents/test.sh";
+
+            // 执行命令
+            Process process = Runtime.getRuntime().exec(command);
+            // 读取进程的输出流
+            BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                result.append(line);
+                // stringBuilder.append(System.getProperty("line.separator"));
+            }
+
+            // 等待进程执行结束
+            int exitVal = process.waitFor();
+            if (exitVal == 0) {
+                log.info("get command result: {}", result);
+
+            } else {
+                log.error("command failed");
+            }
+        } catch (Exception exception) {
+            log.error("command failed: {}", exception.getMessage());
+        }
+
+        return result.toString();
     }
 }
 ```

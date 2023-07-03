@@ -104,7 +104,7 @@ public class FtpUtil {
      * @param filePath Ftp文件路径
      * @return 是否切换成功
      */
-    private boolean    (String basePath, String filePath) {
+    private boolean changeWorkingDirectory(String basePath, String filePath) {
         boolean isSuccess = false;
 
         // 切换到上传目录
@@ -158,15 +158,15 @@ public class FtpUtil {
 
         try {
             if (changeWorkingDirectory(basePath, filePath)) {
-                log.info("start upload" + fileName);
+                log.info("start upload " + fileName);
                 // 设置上传文件的类型为二进制类型
                 ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
                 // 上传文件
                 if (!ftpClient.storeFile(fileName, input)) {
-                    log.error("upload" + fileName + "failed");
+                    log.error("upload " + fileName + " failed");
                     return false;
                 }
-                log.info("upload" + fileName + "success");
+                log.info("upload " + fileName + " success");
                 input.close();
                 isUpload = true;
             }
